@@ -1,72 +1,78 @@
 ## Problem
-Given two strings, `s` and `t`, find the minimum length substring of `s` that contains all characters of `t`. If no such substring exists, return an empty string. This problem is a classic example of a string matching problem that can be solved using the sliding window technique.
+Given two strings, `s` and `t`, find the minimum length substring of `s` that contains all characters of `t`. This problem involves finding the smallest window in `s` that includes every character in `t`, regardless of the order of characters.
 
 ## Examples
 * Input: `s = "ADOBECODEBANC", t = "ABC"` Output: `"BANC"`
 * Input: `s = "a", t = "a"` Output: `"a"`
-* Input: `s = "a", t = "b"` Output: `""`
+* Input: `s = "ab", t = "b"` Output: `"b"`
 
 ## Approach
-To solve this problem, we can use the sliding window technique. The idea is to maintain a window of characters in `s` that contains all characters of `t`. We start by creating a dictionary to store the frequency of characters in `t`. Then, we initialize two pointers, `left` and `right`, to the start of `s`. We expand the window to the right by moving the `right` pointer and update the frequency of characters in the window. When the window contains all characters of `t`, we try to minimize the window by moving the `left` pointer to the right. We keep track of the minimum length substring that contains all characters of `t`.
+To solve this problem, we use a sliding window approach combined with string manipulation. The idea is to maintain a window in `s` that expands to the right and contracts from the left as necessary to ensure it always contains all characters of `t`. We start by creating a dictionary to store the frequency of characters in `t`. Then, we initialize two pointers, `left` and `right`, to represent our sliding window.
 
-Here are the steps:
-1. Create a dictionary to store the frequency of characters in `t`.
-2. Initialize two pointers, `left` and `right`, to the start of `s`.
-3. Expand the window to the right by moving the `right` pointer and update the frequency of characters in the window.
-4. When the window contains all characters of `t`, try to minimize the window by moving the `left` pointer to the right.
-5. Keep track of the minimum length substring that contains all characters of `t`.
+Step by step:
+1. Initialize the dictionary with character frequencies from `t`.
+2. Initialize `left` and `right` pointers and a variable to track the minimum window length.
+3. Expand the window to the right until it contains all characters of `t`.
+4. Once the window contains all characters of `t`, try to contract it from the left while still containing all characters of `t` to find the minimum length.
+5. Update the minimum length and the corresponding substring whenever a smaller valid window is found.
 
 ## Solution
 ```python
 from collections import defaultdict
 
-def min_window(s: str, t: str) -> str:
-    # Create a dictionary to store the frequency of characters in t
-    t_count = defaultdict(int)
-    for char in t:
-        t_count[char] += 1
+def minWindow(s: str, t: str) -> str:
+    # Base case
+    if not t or not s:
+        return ""
     
-    # Initialize variables to keep track of the minimum window
-    min_length = float('inf')
-    min_window = ""
+    # Create a dictionary to store the frequency of characters in t
+    dict_t = defaultdict(int)
+    for char in t:
+        dict_t[char] += 1
+    
+    # Initialize variables
+    required = len(dict_t)
     left = 0
+    min_len = float('inf')
+    min_str = None
     formed = 0
     
-    # Create a dictionary to store the frequency of characters in the window
+    # Create a dictionary to store the frequency of characters in the current window
     window_counts = defaultdict(int)
     
-    # Expand the window to the right
+    # Traverse the string s
     for right in range(len(s)):
         character = s[right]
         window_counts[character] += 1
         
-        # If the character is in t and its frequency in the window is equal to its frequency in t,
-        # increment the formed variable
-        if character in t_count and window_counts[character] == t_count[character]:
+        # If the frequency of the current character added equals to the frequency of the character in t,
+        # increment the formed count by 1.
+        if character in dict_t and window_counts[character] == dict_t[character]:
             formed += 1
         
-        # While the window contains all characters of t and the left pointer is not at the start of the window,
-        # try to minimize the window
-        while left <= right and formed == len(t_count):
+        # Try and contract the window
+        while left <= right and formed == required:
             character = s[left]
             
-            # If the current window is smaller than the minimum window found so far, update the minimum window
-            if right - left + 1 < min_length:
-                min_length = right - left + 1
-                min_window = s[left:right + 1]
+            # Save the smallest window
+            if right - left + 1 < min_len:
+                min_len = right - left + 1
+                min_str = s[left:right + 1]
             
-            # Move the left pointer to the right
+            # Contract the window
             window_counts[character] -= 1
-            if character in t_count and window_counts[character] < t_count[character]:
+            if character in dict_t and window_counts[character] < dict_t[character]:
                 formed -= 1
+            
+            # Move the window to the right
             left += 1
     
-    return min_window
+    return min_str if min_str is not None else ""
 ```
 
 ## Complexity
-- Time: O(|s| + |t|) — The time complexity is linear with respect to the lengths of the strings `s` and `t` because we make a single pass over each string.
-- Space: O(|s| + |t|) — The space complexity is also linear with respect to the lengths of the strings `s` and `t` because in the worst case, we might need to store all characters of `s` and `t` in the `window_counts` and `t_count` dictionaries.
+- Time: O(|s| + |t|) — because in the worst case, we might need to traverse both strings `s` and `t` once.
+- Space: O(|s| + |t|) — because in the worst case, we might need to store all characters from both strings in our dictionaries.
 
 ## Key Insight
-The core trick to solve this problem is to use the sliding window technique to maintain a window of characters in `s` that contains all characters of `t`, and then try to minimize the window by moving the left pointer to the right.
+The core trick to solving this problem is using a sliding window approach combined with dictionaries to efficiently track the formation of the substring that contains all characters of the target string.
