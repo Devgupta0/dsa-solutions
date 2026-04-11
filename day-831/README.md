@@ -1,79 +1,58 @@
 ## Problem
-Given two strings `s` and `t`, find the minimum window in `s` that contains all characters of `t`. This minimum window is the shortest substring of `s` that includes all characters of `t`. If there are multiple such windows, return the one that appears first in `s`.
+The Longest Increasing Subsequence (LIS) problem is a classic problem in computer science and mathematics. Given an array of integers, the goal is to find the length of the longest subsequence that is strictly increasing. This means that for any two elements in the subsequence, the element that appears later in the subsequence must be greater than the element that appears earlier. The subsequence does not need to be contiguous, meaning that the elements do not need to appear next to each other in the original array.
 
 ## Examples
-- Input: `s = "ADOBECODEBANC", t = "ABC"` Output: `"BANC"`
-- Input: `s = "a", t = "aa"` Output: `""` (since there's no substring in `s` that contains all characters of `t`)
-- Input: `s = "aa", t = "aa"` Output: `"aa"`
+* Input: `arr = [10, 22, 9, 33, 21, 50, 41, 60]`
+  Output: `5`
+  Explanation: The longest increasing subsequence is `[10, 22, 33, 50, 60]`.
+* Input: `arr = [1, 2, 3, 4, 5]`
+  Output: `5`
+  Explanation: The longest increasing subsequence is `[1, 2, 3, 4, 5]`.
+* Input: `arr = [5, 4, 3, 2, 1]`
+  Output: `1`
+  Explanation: The longest increasing subsequence is `[5]`.
 
 ## Approach
-To solve this problem, we'll use the sliding window technique. The idea is to maintain a window in `s` that includes all characters of `t`. We'll start with an empty window and expand it to the right until we include all characters of `t`. Once we have a valid window, we'll try to minimize it by moving the left boundary of the window to the right while still keeping all characters of `t`.
-
-Here's the step-by-step process:
-1. Create a dictionary to store the frequency of characters in `t`.
-2. Initialize two pointers, `left` and `right`, to the start of `s`. `left` will be the start of the window, and `right` will be the end.
-3. Expand the window to the right by moving `right` until we include all characters of `t`.
-4. Once we have a valid window, try to minimize it by moving `left` to the right while still keeping all characters of `t`.
-5. Keep track of the minimum window found so far.
+The Longest Increasing Subsequence problem can be solved using dynamic programming. The idea is to create an array `dp` where `dp[i]` represents the length of the longest increasing subsequence ending at index `i`. We initialize `dp` with all elements as 1, because the minimum length of the longest increasing subsequence ending at any index is 1 (the element itself). Then, for each element in the array, we compare it with all previous elements. If the current element is greater than a previous element, it means that we can extend the increasing subsequence ending at the previous element by appending the current element. Therefore, we update `dp[i]` to be the maximum of its current value and `dp[j] + 1`, where `j` is the index of the previous element.
 
 ## Solution
 ```python
-from collections import defaultdict
+def length_of_lis(arr):
+    """
+    Returns the length of the longest increasing subsequence in the given array.
+    
+    Args:
+        arr (list): A list of integers.
+    
+    Returns:
+        int: The length of the longest increasing subsequence.
+    """
+    if not arr:
+        return 0
+    
+    # Initialize dp array with all elements as 1
+    dp = [1] * len(arr)
+    
+    # Iterate over the array
+    for i in range(1, len(arr)):
+        # Compare the current element with all previous elements
+        for j in range(i):
+            # If the current element is greater than the previous element, update dp[i]
+            if arr[i] > arr[j]:
+                dp[i] = max(dp[i], dp[j] + 1)
+    
+    # Return the maximum value in dp array
+    return max(dp)
 
-def minWindow(s: str, t: str) -> str:
-    # Base case: if string `t` is longer than string `s`, return empty string
-    if len(t) > len(s):
-        return ""
-
-    # Create a dictionary to store the frequency of characters in `t`
-    t_count = defaultdict(int)
-    for char in t:
-        t_count[char] += 1
-
-    # Initialize variables to keep track of the minimum window
-    min_window = ""
-    min_length = float('inf')
-
-    # Initialize variables to keep track of the current window
-    left = 0
-    formed = 0
-
-    # Create a dictionary to store the frequency of characters in the current window
-    window_counts = defaultdict(int)
-
-    # Expand the window to the right
-    for right in range(len(s)):
-        character = s[right]
-        window_counts[character] += 1
-
-        # If the frequency of the current character in the window is equal to the frequency in `t`,
-        # increment the `formed` count
-        if character in t_count and window_counts[character] == t_count[character]:
-            formed += 1
-
-        # While the window is valid and the left pointer is not at the start of the string,
-        # try to minimize the window
-        while left <= right and formed == len(t_count):
-            character = s[left]
-
-            # If the current window is smaller than the minimum window found so far, update the minimum window
-            if right - left + 1 < min_length:
-                min_length = right - left + 1
-                min_window = s[left:right + 1]
-
-            # Move the left pointer to the right
-            window_counts[character] -= 1
-            if character in t_count and window_counts[character] < t_count[character]:
-                formed -= 1
-
-            left += 1
-
-    return min_window
+# Test the function
+print(length_of_lis([10, 22, 9, 33, 21, 50, 41, 60]))  # Output: 5
+print(length_of_lis([1, 2, 3, 4, 5]))  # Output: 5
+print(length_of_lis([5, 4, 3, 2, 1]))  # Output: 1
 ```
 
 ## Complexity
-- Time: O(|s| + |t|) — The time complexity is linear with respect to the lengths of the strings `s` and `t`. We make a single pass over `s` and a single pass over `t` to create the frequency dictionary.
-- Space: O(|s| + |t|) — The space complexity is also linear with respect to the lengths of the strings `s` and `t`. We use dictionaries to store the frequency of characters in `t` and in the current window, which can contain at most `|s| + |t|` characters.
+- Time: O(n^2) — The solution has two nested loops, each iterating over the array of length n. This results in a quadratic time complexity.
+- Space: O(n) — The solution uses an additional array `dp` of length n to store the lengths of the longest increasing subsequences ending at each index.
 
 ## Key Insight
-The core trick to solving this problem is to use the sliding window technique and maintain a dictionary to keep track of the frequency of characters in the current window, allowing us to efficiently determine whether the window contains all characters of `t`.
+The core trick to solve this problem is to use dynamic programming to build up a table of lengths of the longest increasing subsequences ending at each index, by comparing each element with all previous elements and updating the table accordingly.
