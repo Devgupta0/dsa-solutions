@@ -1,114 +1,164 @@
+# Custom Problem  
+
 ## Problem  
 
-Given an array `A` of `N` integers and an integer `K` ( `K > 0` ), find the length of the **longest contiguous sub‑array** whose sum is divisible by `K`.  
-If no such sub‑array exists, output `0`.
+You are given an array `A` of `N` non‑negative integers and an integer `S`.  
+Find the **maximum length** of a (contiguous) sub‑array whose sum does not exceed `S`.  
 
-**Input**  
+If no sub‑array satisfies the condition, output `0`.
+
+**Input**
+
 ```
-N K
+N S
 A1 A2 … AN
 ```
-- `1 ≤ N ≤ 10^5`  
-- `1 ≤ K ≤ 10^9`  
-- `|Ai| ≤ 10^9`
 
-**Output**  
-A single integer – the maximum length of a sub‑array whose sum % K == 0.
+* `1 ≤ N ≤ 2·10⁵`
+* `0 ≤ Ai ≤ 10⁹`
+* `0 ≤ S ≤ 10¹⁵`
+
+**Output**
+
+A single integer – the maximum possible length.
 
 ---
 
 ## Examples  
 
-| Input | Output | Explanation |
-|-------|--------|-------------|
-| `6 3`<br>`2 7 6 1 4 5` | `4` | Sub‑array `[7,6,1,4]` has sum `18`, which is divisible by `3`. Its length `4` is maximal. |
-| `5 5`<br>`1 2 3 4 5` | `5` | The whole array sums to `15`, divisible by `5`. |
-| `4 7`<br>`1 2 3 4` | `0` | No sub‑array sum is a multiple of `7`. |
+### Example 1  
+
+```
+5 7
+2 1 5 1 3
+```
+
+**Output**
+
+```
+3
+```
+
+**Explanation**  
+The sub‑array `[2, 1, 5]` has sum `8` (too large).  
+The longest sub‑array with sum ≤ 7 is `[1, 5, 1]` (length 3, sum 7).
+
+---
+
+### Example 2  
+
+```
+4 0
+0 0 0 0
+```
+
+**Output**
+
+```
+4
+```
+
+All elements are zero, so the whole array (length 4) satisfies the condition.
+
+---
+
+### Example 3  
+
+```
+6 10
+4 2 3 7 1 2
+```
+
+**Output**
+
+```
+4
+```
+
+The sub‑array `[4, 2, 3]` has length 3, sum 9.  
+A longer valid sub‑array is `[2, 3, 1, 2]` (length 4, sum 8).
 
 ---
 
 ## Approach  
 
-The problem reduces to finding two indices `i < j` such that  
+Because all numbers are **non‑negative**, the sum of a window never decreases when we extend it to the right. This monotonicity lets us use the classic **two‑pointer (sliding window)** technique:
 
-```
-(prefix_sum[j] - prefix_sum[i]) % K == 0
-```
+1. Keep two indices `left` and `right` that delimit the current window `[left, right)`.  
+2. Move `right` forward, adding `A[right]` to the running sum.  
+3. While the sum exceeds `S`, shrink the window from the left: subtract `A[left]` and increment `left`.  
+4. After each adjustment the window sum ≤ S, so its length `right‑left+1` is a candidate for the answer.  
+5. Track the maximum length seen.
 
-which is equivalent to  
-
-```
-prefix_sum[j] % K == prefix_sum[i] % K
-```
-
-So we only need the earliest occurrence of each remainder of the prefix sum modulo `K`.  
-
-**Step‑by‑step algorithm**
-
-1. Initialise a dictionary `first_occurrence` with remainder `0` mapped to index `-1` (this handles sub‑arrays starting at position 0).  
-2. Iterate over the array, maintaining `curr_sum` (the running prefix sum).  
-3. Compute `rem = ((curr_sum % K) + K) % K` to keep the remainder non‑negative.  
-4. If `rem` has been seen before, a sub‑array ending at the current index has sum divisible by `K`. Its length is `idx - first_occurrence[rem]`. Update the answer if this length is larger.  
-5. If `rem` is **not** in the dictionary, store `first_occurrence[rem] = idx` (the earliest index for this remainder).  
-6. After processing all elements, the stored answer is the required maximum length.
-
-The algorithm is linear because each element is processed once and all dictionary operations are O(1) on average.
+The algorithm processes each element at most twice (once when `right` visits it, once when `left` removes it), yielding linear time.
 
 ---
 
 ## Solution  
+
 ```python
-# full working Python solution with comments
+#!/usr/bin/env python3
+"""
+Solution for the "Custom Problem": longest sub‑array with sum ≤ S.
+
+The algorithm uses a sliding window (two pointers) because all array
+elements are non‑negative, which guarantees that extending the window
+to the right never reduces its sum.
+"""
+
 import sys
 
-def longest_divisible_subarray(arr, k):
-    """
-    Returns the length of the longest contiguous sub‑array whose sum is divisible by k.
-    """
-    first_occurrence = {0: -1}          # remainder -> earliest index
-    cur_sum = 0
-    best = 0
+def max_len_subarray_leq_sum(arr, S):
+    """Return the maximum length of a sub‑array whose sum ≤ S."""
+    left = 0            # left border of the window
+    cur_sum = 0         # sum of elements in the current window
+    best = 0            # best length found so far
 
-    for idx, val in enumerate(arr):
-        cur_sum += val
-        # Python's % can be negative for negative sums, fix it
-        rem = ((cur_sum % k) + k) % k
+    for right, val in enumerate(arr):
+        cur_sum += val               # extend window to the right
 
-        if rem in first_occurrence:
-            length = idx - first_occurrence[rem]
-            if length > best:
-                best = length
-        else:
-            # store only the first time we see this remainder
-            first_occurrence[rem] = idx
+        # shrink from the left while the sum is too large
+        while cur_sum > S and left <= right:
+            cur_sum -= arr[left]
+            left += 1
+
+        # now cur_sum ≤ S, update answer
+        window_len = right - left + 1
+        if window_len > best:
+            best = window_len
 
     return best
+
 
 def solve() -> None:
     data = sys.stdin.read().strip().split()
     if not data:
         return
     it = iter(data)
-    n = int(next(it))
-    k = int(next(it))
-    arr = [int(next(it)) for _ in range(n)]
+    N = int(next(it))
+    S = int(next(it))
+    A = [int(next(it)) for _ in range(N)]
 
-    ans = longest_divisible_subarray(arr, k)
+    ans = max_len_subarray_leq_sum(A, S)
     print(ans)
+
 
 if __name__ == "__main__":
     solve()
 ```
 
+The program reads from standard input, computes the answer with the
+function `max_len_subarray_leq_sum`, and prints the result.
+
 ---
 
 ## Complexity  
 
-- **Time:** `O(N)` — each element is visited once and dictionary look‑ups/inserts are O(1) amortised.  
-- **Space:** `O(min(N, K))` — at most one entry per distinct remainder (0 … K‑1). In the worst case we store `K` entries, but never more than `N`.
+- **Time:** `O(N)` – each index moves at most once as `right` and once as `left`.  
+- **Space:** `O(1)` – only a few integer variables are used besides the input array.
 
 ---
 
 ## Key Insight  
 
-Two prefix sums with the same remainder modulo `K` define a sub‑array whose sum is a multiple of `K`; storing the earliest index for each remainder lets us compute the longest such sub‑array in linear time.
+Because all numbers are non‑negative, a sliding‑window (two‑pointer) scan can maintain a valid sum while moving only forward, giving a linear‑time solution.
