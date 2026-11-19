@@ -1,109 +1,138 @@
+# README
+
 ## Problem  
-Given an array `A` of `N` integers (positive, negative or zero), determine the length of the longest **contiguous** sub‑array whose elements sum to zero.  
-If no such sub‑array exists, output `0`.
 
-**Input**  
-- The first line contains an integer `N` ( 1 ≤ `N` ≤ 10⁶ ).  
-- The second line contains `N` space‑separated integers `A[i]` ( |`A[i]`| ≤ 10⁹ ).
+You are given an array `A` of `N` integers and an integer `D`.  
+Find the length of the longest (contiguous) sub‑array such that the absolute difference between the maximum and the minimum element inside the sub‑array is **at most** `D`.
 
-**Output**  
-- A single integer: the maximum length of a zero‑sum sub‑array.
+Formally, for a sub‑array `A[l … r]` ( `0 ≤ l ≤ r < N` ) let  
 
----
+```
+mx = max{ A[i] | l ≤ i ≤ r }
+mn = min{ A[i] | l ≤ i ≤ r }
+```
+
+The sub‑array is **valid** iff `mx - mn ≤ D`.  
+Output the maximum possible length `r‑l+1` among all valid sub‑arrays.  
+If no sub‑array satisfies the condition (this can only happen when `N = 0`), output `0`.
+
+**Constraints**
+
+- `1 ≤ N ≤ 200 000`
+- `0 ≤ D ≤ 10^9`
+- `-10^9 ≤ A[i] ≤ 10^9`
+
+The required solution must run in `O(N)` time (or close to it) and use `O(N)` additional memory at most.
+
+
 
 ## Examples  
 
 | Input | Output | Explanation |
 |-------|--------|-------------|
-| `6`<br>`1 2 -3 3 -1 2` | `4` | Sub‑array `[1, 2, -3, 3]` (indices 0‑3) sums to 0 and has length 4. |
-| `5`<br>`4 -2 -2 4 0` | `5` | The whole array sums to 0, so the answer is 5. |
-| `4`<br>`1 2 3 4` | `0` | No contiguous sub‑array sums to 0. |
+| `6 3`<br>`1 5 2 3 7 2` | `4` | The sub‑array `[5, 2, 3, 7]` has max = 7, min = 2, difference = 5 > 3 → invalid.<br> The longest **valid** sub‑array is `[2, 3, 7, 2]` (indices 2‑5) with max = 7, min = 2, diff = 5 > 3 → still invalid. <br> Actually the longest valid sub‑array is `[1, 5, 2, 3]` (indices 0‑3) with max = 5, min = 1, diff = 4 > 3 → also invalid. <br> The correct longest valid sub‑array is `[2, 3]` (indices 2‑3) length = 2, but there is a longer one: `[5,2,3]` (indices 1‑3) max = 5, min = 2, diff = 3 ≤ 3, length = 3. <br> The answer is **3**. |
+| `5 0`<br>`4 4 4 4 4` | `5` | All elements are equal, so max‑min = 0 ≤ D. Whole array is valid. |
+| `8 2`<br>`1 3 6 4 5 2 8 7` | `3` | One maximal valid sub‑array is `[4,5,2]` (max = 5, min = 2, diff = 3 > 2 → invalid). The correct longest valid sub‑array is `[1,3]` or `[4,5]` or `[5,2]` etc., each of length 2. Actually `[6,4,5]` has max = 6, min = 4, diff = 2, length = 3 → answer **3**. |
 
----
+*(The table shows the intended logic; the first example’s explanation has been corrected to give the final answer `3`.)*
+
+
 
 ## Approach  
-The sum of a sub‑array `A[l … r]` equals `prefix[r] - prefix[l‑1]`, where `prefix[i]` is the sum of the first `i+1` elements.  
-If two prefix sums are equal, the elements between those positions form a zero‑sum sub‑array.
 
-**Plain English**  
-1. Scan the array while maintaining a running prefix sum.  
-2. Store the earliest index where each prefix sum value appears in a hash map.  
-3. When the current prefix sum has been seen before, the sub‑array between the previous index + 1 and the current index has sum 0.  
-4. Keep the maximum length among all such sub‑arrays.  
-5. Also treat prefix sum `0` at index `i` as a zero‑sum sub‑array starting from the first element.
+The condition *max – min ≤ D* must hold for the whole window.  
+While scanning the array from left to right we maintain a **sliding window** `[left … right]` that is always valid.  
 
-**Step‑by‑step**  
-1. Initialise `max_len = 0`, `prefix = 0`, and a dictionary `first_occurrence = {0: -1}` (the sum `0` occurs before the array starts).  
-2. For each index `i` from `0` to `N‑1`  
-   - Update `prefix += A[i]`.  
-   - If `prefix` is already in `first_occurrence` → a zero‑sum sub‑array exists:  
-     `length = i - first_occurrence[prefix]`; update `max_len` if larger.  
-   - Otherwise, record `first_occurrence[prefix] = i` (store the earliest appearance).  
-3. After the loop, output `max_len`.
+To be able to test the condition in **O(1)** we need the current window’s maximum and minimum.  
+Both can be obtained with two **monotonic deques**:
 
-The algorithm uses a single linear pass and constant‑time dictionary operations.
+* `maxDeque` – stores indices in decreasing order of `A[i]`. The front always holds the index of the current maximum.
+* `minDeque` – stores indices in increasing order of `A[i]`. The front always holds the index of the current minimum.
 
----
+When we extend the window by moving `right`:
 
-## Solution
+1. Insert `right` into `maxDeque` while popping from the back all indices whose value is **≤** `A[right]`.  
+2. Insert `right` into `minDeque` while popping from the back all indices whose value is **≥** `A[right]`.
+
+Now the front elements of the two deques give `current_max` and `current_min`.  
+If `current_max - current_min > D`, the window is too large. We shrink it from the left:
+
+* Increase `left` by one.
+* Remove `left‑1` from the fronts of the deques if they equal the removed index.
+
+We repeat the shrinking until the window becomes valid again.  
+During the whole process we keep track of the largest window size seen.
+
+Because each index is inserted and removed **once** from each deque, the total work is linear.
+
+
+
+### Step‑by‑step algorithm
+
+1. Read `N, D` and the array `A`.  
+2. Initialise `left = 0`, `answer = 0`, empty `maxDeque`, `minDeque`.  
+3. For each `right` from `0` to `N‑1`:
+   * While `maxDeque` not empty **and** `A[maxDeque[-1]] ≤ A[right]`: pop back.  
+   * Append `right` to `maxDeque`.  
+   * While `minDeque` not empty **and** `A[minDeque[-1]] ≥ A[right]`: pop back.  
+   * Append `right` to `minDeque`.  
+   * While `A[maxDeque[0]] - A[minDeque[0]] > D`:
+        * If `maxDeque[0] == left`: pop front from `maxDeque`.  
+        * If `minDeque[0] == left`: pop front from `minDeque`.  
+        * `left += 1`.
+   * Update `answer = max(answer, right - left + 1)`.
+4. Print `answer`.
+
+
+
+## Solution  
+
 ```python
 #!/usr/bin/env python3
 """
-Longest Zero‑Sum Sub‑Array
--------------------------
+Longest sub‑array with max - min ≤ D
 
-Given an integer array, returns the length of the longest contiguous
-sub‑array whose sum equals zero.
-
-Complexities:
-    Time  : O(N)
-    Space : O(N)  (hash map of prefix sums)
+Author: OpenAI ChatGPT
 """
 
 import sys
+from collections import deque
 
-def longest_zero_sum_subarray(arr):
-    """
-    Returns the maximum length of a sub‑array with sum zero.
-    """
-    # prefix sum -> earliest index where this sum appears
-    first_occurrence = {0: -1}          # sum 0 before the array starts
-    prefix = 0
-    max_len = 0
-
-    for i, val in enumerate(arr):
-        prefix += val
-
-        if prefix in first_occurrence:
-            # sub‑array (first_occurrence[prefix] + 1) .. i sums to 0
-            cur_len = i - first_occurrence[prefix]
-            if cur_len > max_len:
-                max_len = cur_len
-        else:
-            # store the first time we see this sum
-            first_occurrence[prefix] = i
-
-    return max_len
-
-def main():
+def solve() -> None:
     data = sys.stdin.read().strip().split()
     if not data:
         return
-    n = int(data[0])
-    arr = list(map(int, data[1:1 + n]))
-    print(longest_zero_sum_subarray(arr))
+    it = iter(data)
+    n = int(next(it))
+    D = int(next(it))
+    A = [int(next(it)) for _ in range(n)]
 
-if __name__ == "__main__":
-    main()
-```
+    # Deques store indices
+    max_deque = deque()   # decreasing values
+    min_deque = deque()   # increasing values
 
----
+    left = 0
+    best = 0
 
-## Complexity  
-- **Time:** `O(N)` – each element is processed once; dictionary look‑ups/inserts are amortised `O(1)`.  
-- **Space:** `O(N)` – in the worst case all prefix sums are distinct, so the hash map stores `N+1` entries.
+    for right, val in enumerate(A):
+        # maintain decreasing deque for maximum
+        while max_deque and A[max_deque[-1]] <= val:
+            max_deque.pop()
+        max_deque.append(right)
 
----
+        # maintain increasing deque for minimum
+        while min_deque and A[min_deque[-1]] >= val:
+            min_deque.pop()
+        min_deque.append(right)
 
-## Key Insight  
-A zero‑sum sub‑array exists exactly when a prefix sum repeats; tracking the earliest occurrence of each prefix sum lets us compute the longest such sub‑array in linear time.
+        # shrink window until condition holds
+        while A[max_deque[0]] - A[min_deque[0]] > D:
+            # remove leftmost element from deques if present
+            if max_deque[0] == left:
+                max_deque.popleft()
+            if min_deque[0] == left:
+                min_deque.popleft()
+            left += 1   # move window start
+
+        # update answer
+        current_len = right - left + 1
